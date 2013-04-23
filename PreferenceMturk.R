@@ -9,16 +9,10 @@
 #####################################################################################
 #SETTING ENVIRONMENT
 #####################################################################################
-#remove all objects and then check
-rm(list = ls())
-ls()
-#dettach all packages
-detach()
-
 #command below will install each package. if you run this script from the beginning you need to run every single one again
 lapply(c("sem","ggplot2", "psych", "RCurl", "irr","pgirmess", 
-         "nortest", "moments","GPArotation","nFactors","Hmisc"), library, character.only=T)
-
+         "nortest", "moments","GPArotation","nFactors","Hmisc","beanplot","GGally",
+         "gridExtra"), library, character.only=T)
 ########################################################################################################
 #IMPORTING DATA
 ######################################################################################################
@@ -57,16 +51,16 @@ attach(pref)
 #function below is used to recode variables. things to notice: replace old.var with the variable you are recoding, replace new.var with the variable you want to create. the whole recoding happens within " ". all character and factor variables will be within '', numbers will be displayed with digits (not inside '') or NA (also without ''). see video at http://goo.gl/aDgo4 for more details
 #new.var  <- car::recode(old.var, " 1:2 = 'A'; 3 = 'C'; '' = NA; else = 'B' ")
 
-new.Mturk <-as.factor(car::recode(Mturk, "1 = 'yes'; NA = 'no'"))
-new.Age <-as.factor(car::recode(Age,  "2:4 = '18 to 44'; 5:6 = '45 to 64'; 7:9 = '65 and over'"))
+new.Mturk <-as.factor(car::recode(Mturk, "1 = 'Yes'; NA = 'No'"))
+new.Age <-as.factor(car::recode(Age,  "2:4 = '18 to 44'; 5:6 = '45 to 64'; 7:9 = '> 65'"))
 tabulate(new.Age)
-new.Race <-as.factor(car::recode(Race, "1 = 'White'; 2 = 'african american'; 3 = 'asian'; 4:8 = 'other'"))
+new.Race <-as.factor(car::recode(Race, "1 = 'White'; 2 = 'Afr. Am.'; 3 = 'Asian'; 4:8 = 'Other'"))
 tabulate(new.Race)
-new.Education <-as.factor(car::recode(Education, "1:2 = 'highschless'; 3 = 'somecol'; 4:5 = '24col'; 6:8 = 'mastdocpro'"))
+new.Education <-as.factor(car::recode(Education, "1:2 = 'High'; 3 = 'College'; 4:5 = 'UnderG'; 6:8 = 'Grad'"))
 tabulate(new.Education)
 new.Income <-as.factor(car::recode(Income, "1 = '<20'; 2:4 = '20~50'; 5:8 = '50~90'; 9 = '>90'"))
 tabulate(new.Income)
-new.MaritalStat <-as.factor(car::recode(MaritalStat, "1 = 'nevmard'; c(2,6) = 'married'; 3:5 = 'sepdivwid'"))
+new.MaritalStat <-as.factor(car::recode(MaritalStat, "1 = 'Single'; c(2,6) = 'Married'; 3:5 = 'Other'"))
 tabulate(new.MaritalStat)
 new.Gender <-as.factor(car::recode(Gender, "1 = 'Male'; 2 = 'Female'"))
 tabulate(new.Gender)
@@ -170,7 +164,9 @@ qplot(Totalsample$source,Totalsample$WillToLive, geom=c("boxplot","jitter")) +
 xlab("Source") + ylab("Willingness To Live") + theme_bw()
 
 #Compare groups
-wilcox.test(WillToLive ~ source, data=Totalsample)
+Totalsample$source<-as.factor(Totalsample$source)
+kruskal.test(Totalsample$WillToLive ~ Totalsample$source, data=Totalsample)
+kruskalmc(Totalsample$WillToLive ~ Totalsample$source, data=Totalsample)
 
 #######################################################################################
 #Figure 3. Comparison of Willingness to Live (median) indicators between Mturk and 
@@ -197,14 +193,13 @@ kruskalmc(WillToLive ~ ttoXslider, data=studysampletotal)
 
 #Create beanplot graph to compare groups
 beanplot<-rbind(wtlhangmturk,wtlslidermturk,wtlsliderhang,wtlttomturk) #Create vectorwith all the data
-library(beanplot)
 beanplot(WillToLive ~ ttoXslider, data = beanplot, 
          overallline = "median", method="overplot", side="b",
          col = list("black", "white"), border = c("black", "black"),
          horizontal=TRUE, axes = TRUE, xlab="Willingness to Live",
          beanlinewd=5, ylab="Method of Estimation", names=c("Slider","TTO"))
-legend(locator(), bty="n",c("Mturk", "Traditional"),
-       fill = c("black", "white"))
+#legend(locator(), bty="n",c("Mturk", "Traditional"),
+#       fill = c("black", "white"))
 #######################################################################################
 #Figure 4. Comparison of Willingness to Live (median) indicators between sociodemographic
 # variables for the Mturk sample.
@@ -240,34 +235,42 @@ kruskalmc(studysample$Preference ~ new.Gender, data=studysample)
 
 wilcox.test(studysample$Preference ~ Comorbidities, data=studysample) #Group comparison
 
-#Load specific packages for the graph development
-library(GGally)
-library(gridExtra)
-
 #Creating Graphs objects
-age<-ggally_dotAndBox(studysample, aes(x = Preference, y = new.Age, col=new.Age), boxPlot=TRUE,
+studysample$Age<-studysample$new.Age
+age<-ggally_dotAndBox(studysample, aes(x = Preference, y = Age, col=new.Age), boxPlot=TRUE,
                       outlier.colour="red")  +
-                       ylab("Willingness to Live") + theme_bw() + theme(legend.position = "none")
+                       ylab("Willingness to Live") + theme_bw() + theme(legend.position = "none") +
+  xlab("Age")
 age
-edu<-ggally_dotAndBox(studysample, aes(x = Preference, y = new.Education, col=new.Education), boxPlot=TRUE,
+
+studysample$Education<-studysample$new.Education
+edu<-ggally_dotAndBox(studysample, aes(x = Preference, y = Education, col=new.Education), boxPlot=TRUE,
                       outlier.colour="red")  +
                         xlab("Education") + ylab("Willingness to Live") + theme_bw() + 
   theme(legend.position = "none")
 edu
-inc<-ggally_dotAndBox(studysample, aes(x = Preference, y = new.Income, col=new.Income), boxPlot=TRUE,
+
+studysample$Income<-studysample$new.Income
+inc<-ggally_dotAndBox(studysample, aes(x = Preference, y = Income, col=new.Income), boxPlot=TRUE,
                       outlier.colour="red") + 
                     ylab("Willingness to Live") + theme_bw() + theme(legend.position = "none")
 inc
-ms<-ggally_dotAndBox(studysample, aes(x = Preference, y = new.MaritalStat, col=new.MaritalStat), 
+
+studysample$MaritalStatus<-studysample$new.MaritalStat
+ms<-ggally_dotAndBox(studysample, aes(x = Preference, y = MaritalStatus, col=new.MaritalStat), 
                      boxPlot=TRUE,
                       outlier.colour="red") + 
                   ylab("Willingness to Live") + theme_bw() + theme(legend.position = "none")
 ms
-race<-ggally_dotAndBox(studysample, aes(x = Preference, y = new.Race, col=new.Race), boxPlot=TRUE,
+
+studysample$Race<-studysample$new.Race
+race<-ggally_dotAndBox(studysample, aes(x = Preference, y = Race, col=new.Race), boxPlot=TRUE,
                       outlier.colour="red") + 
                 ylab("Willingness to Live")+ theme_bw() + theme(legend.position = "none")
 race
-gender<-ggally_dotAndBox(studysample, aes(x = Preference, y = new.Gender, col=new.Gender), boxPlot=TRUE,
+
+studysample$Gender<-studysample$new.Gender
+gender<-ggally_dotAndBox(studysample, aes(x = Preference, y = Gender, col=new.Gender), boxPlot=TRUE,
                        outlier.colour="red") + 
                 ylab("Willingness to Live") + theme_bw() + theme(legend.position = "none")
 gender
